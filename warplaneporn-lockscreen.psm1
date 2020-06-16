@@ -27,7 +27,7 @@ function set-WarplanepornLockscreen{
     else {
         if(!$subreddits) {
             if (test-path (Join-Path $warplanepornFolder "subreddits.txt")) {
-                $subreddits_temp = Get-Content -Path ".\subreddits.txt"
+                $subreddits_temp = Get-Content -Path (join-path $warplanepornFolder "subreddits.txt")
                 $subreddits = @()
                 $subreddits_temp | ForEach-Object {
                     if (!(($_.Trim()) -match ' ') -and $_) {
@@ -76,7 +76,7 @@ function get-warplanepornPicFortheDay {
             if (($imagewidth -ge 1000) -and (($imagewidth/$imageheight) -ge 1)) {
                 $notfound = 0
                 $imageurl = $_.data.url
-                if (test-path $lockscreenImagePath) {Remove-Item $lockscreenImagePath}
+                if (test-path $lockscreenImagePath) {Remove-Item $lockscreenImagePath -Force}
                 Rename-Item $templockscreenImagePath "lockscreen.jpg"
             }
             elseif ($imagewidth -le 1000) {
@@ -153,16 +153,13 @@ function install-warplaneporn-lockscreen {
 
     # check to see if user is admin
     if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")){
-        # is admin, we're good to install
-        Write-Host "This will install warplaneporn-lockscreen on your machine and it will download a top image from the given subreddit(s) (default warplaneporn) login screen every day" -ForegroundColor DarkYellow
 
         # Create a task scheduler event
-        $argument = "-WindowStyle Hidden -command `"import-module 'warplaneporn-lockscreen'; set-WarplanepornLockscreen -logfile {0} -warplanepornFolder {1} -subreddits {2}`"" -f `
+        $argument = "-WindowStyle Hidden -command `"import-module 'warplaneporn-lockscreen'; set-WarplanepornLockscreen -logfile {0} -warplanepornFolder {1}`"" -f `
             $logfile, `
-            $warplanepornFolder, `
-            $subreddits
+            $warplanepornFolder
         $action = New-ScheduledTaskAction -id "warplaneplorn-lockscreen" -execute 'Powershell.exe' -Argument $argument
-        $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAvailable
+        $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAvailable -AllowStartIfOnBatteries
         $trigger = New-ScheduledTaskTrigger -Daily -At 1am
         Write-Host "This script needs admin privileges to work" -ForegroundColor DarkBlue
         $Credential = Test-Credential
@@ -182,9 +179,10 @@ function install-warplaneporn-lockscreen {
         if ($? -and (Get-ScheduledTask -TaskName "warplaneporn-lockscreen" -ErrorAction SilentlyContinue)){
             write-Log "warplaneporn-lockscreen is installed" -colour "Green" -logFile $logfile
         } else {
-            throw "Task creation failed"
+            Write-Host "Task creation failed. The wallpaper will not be automatically refreshed. You can still run the utility manually : set-WarplanepornLockscreen" -ForegroundColor Red
         }
-    }  else {
+    }
+    else {
         # not admin
         Write-Host "You need run this script as an Admin to install it" -ForegroundColor Red
         throw "Missing admin privileges"
@@ -198,12 +196,13 @@ function uninstall-warplaneporn-lockscreen {
     )
     if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")){
         $RegKeyPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP"
-        remove-item -Path $RegKeyPath -Force -Recurse| Out-Null;
-        Unregister-ScheduledTask -TaskName "warplaneporn-lockscreen" -ErrorAction SilentlyContinue;
-        Remove-Item  $warplanepornFolder -Recurse -ErrorAction SilentlyContinue;
+        remove-item -Path $RegKeyPath -Force -Recurse | Out-Null;
+        Unregister-ScheduledTask -TaskName "warplaneporn-lockscreen" -ErrorAction SilentlyContinue -Confirm:$false;
+        Remove-Item  $warplanepornFolder -Recurse -ErrorAction SilentlyContinue -Force | Out-Null;
         $scriptPath = (get-item $myInvocation.ScriptName).Directory
         if ($scriptPath.name -eq "warplaneporn-lockscreen"){
             Write-host "You have to manually remove the module now. Just delete the warplaneporn-lockscreen folder." -ForegroundColor Red
+            Start-Sleep 1
             Invoke-Item $scriptPath;
         }
     } else {
@@ -219,18 +218,18 @@ function Test-Credential {
     Add-Type -AssemblyName System.DirectoryServices.AccountManagement
     $DS = New-Object System.DirectoryServices.AccountManagement.PrincipalContext('machine',$env:COMPUTERNAME)
 
-    while ((! $usernameChecksOut) -and $againWithThePassword){
+    while ((!$usernameChecksOut) -and $againWithThePassword){
         $Credential = Get-Credential -ErrorAction SilentlyContinue
         if ($null -eq $Credential){
             Write-Warning "You did not input any credentials"
-            $againWithThePassword = ((read-host "Try again with the password this time (y/n) ?").ToLower() -ne "n")
+            $againWithThePassword = ((read-host "Try again (y/n) ?").ToLower() -ne "n")
         } else {
             $usernameChecksOut = $DS.ValidateCredentials($Credential.UserName, $Credential.GetNetworkCredential().Password)
             if ($usernameChecksOut){
                 return $Credential
             } else {
-                Write-Warning "Username and / or password is incorrect. Soz.";
-                $againWithThePassword = ((read-host "Try again with the password this time (y/n) ?").ToLower() -eq "n")
+                Write-Warning "Username and/or password incorrect";
+                $againWithThePassword = ((read-host "Try again (y/n) ?").ToLower() -eq "n")
             }
         }
         if (! $againWithThePassword){

@@ -1,6 +1,6 @@
 # warplaneporn-lockscreen
 
-Set a lockscreen background from one or several subreddits on a daily basis
+Daily background from one or several subreddits
 
 ## Requirements
 
@@ -11,16 +11,18 @@ Works for Windows 10 (build 1703 or later)
 
 ## Install
 
-1. Clone the repo
+1. Clone the repo or download archive from [releases](https://github.com/viccol961/warplaneporn-lockscreen/releases)
 2. Allow execution of powershell scripts (can be disabled after installation) : `Set-ExecutionPolicy Unrestricted`
 3. Register desired subreddits in `subreddits.txt` (no spaces, one line per subreddit, no "/r/" prefix). If this file is not found by the installer, it will default to [/r/warplaneporn](https://reddit.com/r/warplaneporn)
-4. Run script `install.bat` with admin rights (right click > Run as administrator)
+4. Run script `install.ps1` with admin rights
 
 A task will be set to run everyday to refresh the wallpaper as soon as possible starting from 1am.
 
+Reinstall to modify the list of subreddits to choose a wallpaper from.
+
 ## Usage
 
-You can run the command at any given time
+You can run the utility at any given time to try and find a new background.
 
 From `powershell` :
 
