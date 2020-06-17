@@ -1,5 +1,10 @@
 # warplaneporn-lockscreen
 
+[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/viccol961/warplaneporn-lockscreen?sort=semver)](https://github.com/viccol961/warplaneporn-lockscreen/releases)
+[![GitHub issues](https://img.shields.io/github/issues/viccol961/warplaneporn-lockscreen)](https://github.com/viccol961/warplaneporn-lockscreen/issues)
+[![GitHub license](https://img.shields.io/github/license/viccol961/warplaneporn-lockscreen)](https://github.com/viccol961/warplaneporn-lockscreen/blob/master/LICENSE)
+[![r/warplaneporn](https://img.shields.io/static/v1?label=r/&message=warplaneporn&color=informational)](https://reddit.com/r/warplaneporn)
+
 Daily background from one or several subreddits
 
 ## Requirements
