@@ -100,30 +100,35 @@ function WarplanepornLockscreen{
     }
 
     if ($list) {
-        Write-Host $config.subreddits
+        Write-Host $configuration.subreddits
     }
 
     if ($add -and (!$config)) {
         $subreddit_add = $add.Trim()
         $ProgressPreference = 'SilentlyContinue'
-        $subredditStatus = Invoke-WebRequest ("https://reddit.com/r/{0}/about.json" -f $subreddit_add)
+        $subredditStatus = Invoke-WebRequest ("https://reddit.com/r/{0}/about.json" -f $subreddit_add) | ConvertFrom-Json
         if ($subredditStatus.data.subreddit_type -eq "public") {
             $configuration.subreddits += $subreddit_add
             $configuration | ConvertTo-Json | Out-File $configPath
         }
         else {
-            Write-Warning "Subreddit { 0 } could not be found. It could not exist or be restricted." -ForegroundColor Red
+            Write-Host "Subreddit {0} could not be found. It could not exist or be restricted." -ForegroundColor Red
         }
     }
 
     if ($remove -and (!$config)) {
-        $subreddit_remove = $remove.Trim()
-        if ($configuration.subreddits.Contains($subreddit_remove)) {
-            $configuration.subreddits.Remove($subreddit_remove)
-            $configuration | ConvertTo-Json | Out-File $configPath
+        if ($configuration.subreddits.count -le 1) {
+            Write-Host "There is only one subreddit left in the configuration, please add a new one before removing it." -ForegroundColor Red
         }
         else {
-            Write-Host "Could not find subreddit {0} in the current configuration" -ForegroundColor Red
+            $subreddit_remove = $remove.Trim()
+            if ($configuration.subreddits.Contains($subreddit_remove)) {
+                $configuration.subreddits.Remove($subreddit_remove)
+                $configuration | ConvertTo-Json | Out-File $configPath
+            }
+            else {
+                Write-Host "Could not find subreddit {0} in the current configuration" -ForegroundColor Red
+            }
         }
     }
 
@@ -203,8 +208,8 @@ function Config-WarplanepornLockscreen {
         $subreddit = (Read-Host ("Subreddit {0}" -f $inSubIdx)).Trim()
         if ($subreddit -eq "") { Break }
 
-        Write-Host "Checking..." -ForegroundColor DarkYellow
-        $subredditStatus = Invoke-WebRequest ("https://reddit.com/r/{0}/about.json" -f $subreddit)
+        Write-Host ("Checking subreddit {0}..." -f $subreddit) -ForegroundColor DarkYellow
+        $subredditStatus = Invoke-WebRequest ("https://reddit.com/r/{0}/about.json" -f $subreddit) | ConvertFrom-Json
         if ($subredditStatus.data.subreddit_type -eq "public") {
             $subreddits += $subreddit
             $inSubIdx += 1
@@ -223,7 +228,10 @@ function Config-WarplanepornLockscreen {
     $configuration | ConvertTo-Json | Out-File $configPath
 
     # execute utility if asked to
-    if ($ExecuteAfter) { WarplanepornLockscreen }
+    if ($ExecuteAfter) {
+        Write-Host ""
+        WarplanepornLockscreen
+    }
 }
 
 function Get-WarplanepornPicfortheday {
@@ -233,7 +241,7 @@ function Get-WarplanepornPicfortheday {
     [string]$sort,
     [bool]$nsfw
     )
-    Write-Host ("List of configured sunreddits : {0}" -f $subreddits)
+    Write-Host ("List of configured subreddits : {0}" -f $subreddits)
 
     $ProgressPreference = 'SilentlyContinue'
     $templockscreenImagePath = Join-Path $PSScriptRoot "lockscreen_temp.jpg"
@@ -350,6 +358,22 @@ function Install-WarplanepornLockscreen {
             Write-Log "WarplanepornLockscreen is installed" -colour "Green"
             Write-Host ""
         }
+
+        # run user config
+        Config-WarplanepornLockscreen -ExecuteAfter
+
+        # check execution policy
+        $LMExecutionPolicy = (Get-ExecutionPolicy -Scope LocalMachine)
+        $CUExecutionPolicy = (Get-ExecutionPolicy -Scope CurrentUser)
+        $UnrestrictedExecutionPolicy = "Unrestricted"
+        $UndefinedExecutionPolicy = "Undefined"
+        if (-not ((($LMExecutionPolicy -eq $UnrestrictedExecutionPolicy) -and ($CUExecutionPolicy -eq $UndefinedExecutionPolicy)) -or ($CUExecutionPolicy -eq $UnrestrictedExecutionPolicy))) {
+            Write-Host "`nWARNING: ExecutionPolicy is not unrestricted. The task will work but you will not be able to refresh the wallpaper manually" -ForegroundColor Red
+            Write-Host "To enable execution of scripts, run " -NoNewline
+            Write-Host "Set-ExecutionPolicy Unrestricted" -BackgroundColor DarkYellow -ForegroundColor Black -NoNewline
+            Write-Host " as admin"
+            Write-Host "See https://go.microsoft.com/fwlink/?LinkID=135170"
+        }
     }
     else {
         Write-Host "You need run this script as an Admin to install it" -ForegroundColor Red
@@ -359,18 +383,38 @@ function Install-WarplanepornLockscreen {
 
 function Uninstall-WarplanepornLockscreen {
     if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")){
+        # remove registry key
         $RegKeyPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP"
-        remove-item -Path $RegKeyPath -Force -Recurse | Out-Null;
-        Unregister-ScheduledTask -TaskName "WarplanepornLockscreen" -ErrorAction SilentlyContinue -Confirm:$false;
+        Remove-Item -Path $RegKeyPath -Force -Recurse | Out-Null;
+        if (Test-Path $RegKeyPath) {
+            Write-Host "Failed to remove registry key" -ForegroundColor Red
+        }
+        else {
+            Write-Host "Removed registry key" -ForegroundColor Green
+        }
+
+        # unregister task
+        Unregister-ScheduledTask -TaskName "WarplanepornLockscreen" -ErrorAction SilentlyContinue -Confirm:$false | Out-Null;
+        if (Get-ScheduledTask -TaskName) {
+            Write-Host "Failed to unregister task" -ForegroundColor Red
+        }
+        else {
+            Write-Host "Unregistered task" -ForegroundColor Green
+        }
+
+        # remove ps module
         Remove-Item  $PSScriptRoot -Recurse -ErrorAction SilentlyContinue -Force | Out-Null;
-        if ($PSScriptRoot.name -eq "WarplanepornLockscreen"){
+        if (Test-Path $PSScriptRoot){
+            Write-Host "Could not automatically remove PowerShell module" -ForegroundColor Red
             Write-host "You have to manually remove the module now. Just delete the WarplanepornLockscreen folder." -ForegroundColor Cyan
             Start-Sleep 1
-            Invoke-Item $scriptPath;
+            Invoke-Item $PSScriptRoot;
+        }
+        else {
+            Write-Host "Uninstalled module" -ForegroundColor Green
         }
     } else {
-        Write-host "You need to run this script as admin to uninstall it" -ForegroundColor Red
-        throw "Missing admin rights"
+        Write-host "You need to run this script as admin to uninstall" -ForegroundColor Red
     }
 
 }
@@ -395,7 +439,7 @@ function Test-Credential {
         }
         if (!$retryPassword){
             Write-Host "WARNING: The task creation will fail without administator password." -ForegroundColor Red
-            Write-Host "You will still be able to run the utility to manually refresh the lock screen wallpaper" -ForegroundColor Red
+            Write-Host "You will still be able to run the utility to manually refresh the lock screen wallpaper`n" -ForegroundColor Red
             return $false
         }
         Start-Sleep -s 1
@@ -423,5 +467,3 @@ function Write-Log  {
 
     Write-Host $Msg -ForegroundColor $colour
 }
-
-Export-ModuleMember -Function WarplanepornLockscreen,Config-WarplanepornLockscreen
