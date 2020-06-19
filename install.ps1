@@ -11,7 +11,7 @@ if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]:
     if (!(test-path $InstallPath)) {mkdir($InstallPath) | Out-Null}
     elseif (test-path $ScriptPath) {Remove-Item $ScriptPath | Out-Null}
     Copy-Item ".\WarplanepornLockscreen.psm1" -Destination $InstallPath
-    elseif (test-path $ManifestPath) { Remove-Item $ManifestPath | Out-Null }
+    if (test-path $ManifestPath) { Remove-Item $ManifestPath | Out-Null }
     Copy-Item ".\WarplanepornLockscreen.psd1" -Destination $InstallPath
 
     # test install

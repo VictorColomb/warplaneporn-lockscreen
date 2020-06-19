@@ -16,37 +16,54 @@ function WarplanepornLockscreen{
     $warplanepornPic = Join-Path $PSScriptRoot "lockscreen.jpg"
     $configPath = Join-Path $PSScriptRoot "config.json"
 
-    # get config
-    if (Test-Path $configPath) {
-        $configuration = Get-Content -Raw -Path $configPath | ConvertFrom-Json
+    # catch weird argument combinaisons
+    if ($install -and $uninstall) {
+        Write-Host "Why would you want to install and uninstall ??"
+        Write-Host "See help : WarplanepornLockscreen -help"
+        Break
     }
-    else {
-        if ($sort) { $config_sort = $sort}
-        else { $config_sort = "hot" }
-        if (!$subreddits) {
-            $subreddits = @('warplaneporn')
-        }
-        $configuration = @{
-            "subreddits" = $subreddits
-            "nsfw" = $nsfw.IsPresent
-            "sort" = $config_sort
-        }
-
-        if (-not ($install -or $uninstall)) {
-            if ((Read-Host "No config file was found, would you like to create one ? (y/n) ").ToLower() -eq "y") {
-                Config-WarplanepornLockscreen
-                $configuration = Get-Content -Raw -Path $configPath | ConvertFrom-Json
-            }
-        }
+    if ($install -and ($list -or $add -or $remove -or $config)) {
+        Write-Host "Don't ask for both installation and configuration. The former does the latter !"
+        Write-Host "See help : WarplanepornLockscreen -help"
+        Break
     }
 
-    if (!$nsfw) {$nsfw = $configuration.nsfw}
+    # install and uninstall options
+    if ($install){
+        Install-WarplanepornLockscreen
+        Break
+    }
+
+    elseif ($uninstall) {
+        Uninstall-WarplanepornLockscreen
+        Break
+    }
+
+    # get config and check installed
+    if (-not (Test-Path $configPath)) {
+        Write-Host "The module was never installed, would you like to install it ? (y/n) : " -ForegroundColor Cyan -NoNewline
+        if ((Read-Host).ToLower() -eq "y") {
+            Install-WarplanepornLockscreen
+            Break
+        }
+    }
+    $configuration = Get-Content -Raw -Path $configPath | ConvertFrom-Json
+    if (!$configuration.installed) {
+        Write-Host "The module was never installed, would you like to install it ? (y/n) : " -ForegroundColor Cyan -NoNewline
+        if ((Read-Host).ToLower() -eq "y") {
+            Install-WarplanepornLockscreen
+            Break
+        }
+    }
+
+    # parse options
+    if (!$nsfw) { $nsfw = $configuration.nsfw }
     $sort = $sort.ToLower()
     if (-not (($sort -eq "hot") -or ($sort -eq "top") -or ($sort -eq "new") -or ($sort -eq $null) -or ($sort -eq ""))) {
         Write-Host ("Sort input {0} makes no sense. It should be one of top, hot and new" -f $sort) -ForegroundColor Red
         Write-Host "See help : WarplanepornLockscreen -help"
         cmd /c pause
-        exit
+        Break
     }
     if (!$sort) {
         if ($configuration.sort) {
@@ -56,28 +73,6 @@ function WarplanepornLockscreen{
             $configuration.sort = "hot"
             $sort = "hot"
         }
-    }
-
-    # catch weird argument combinaisons
-    if ($install -and $uninstall) {
-        Write-Host "Why would you want to install and uninstall ??"
-        Write-Host "See help : WarplanepornLockscreen -help"
-        exit
-    }
-    if ($install -and ($list -or $add -or $remove -or $config)) {
-        Write-Host "Don't ask for both installation and configuration. The former does the latter !"
-        Write-Host "See help : WarplanepornLockscreen -help"
-        exit
-    }
-
-
-    # execute arguments
-    if ($install){
-        Install-WarplanepornLockscreen
-    }
-
-    elseif ($uninstall) {
-        Uninstall-WarplanepornLockscreen
     }
 
     if ($showpic) {
@@ -110,6 +105,7 @@ function WarplanepornLockscreen{
         if ($subredditStatus.data.subreddit_type -eq "public") {
             $configuration.subreddits += $subreddit_add
             $configuration | ConvertTo-Json | Out-File $configPath
+            Write-Host ("Subreddit {0} was added to configuration" -f $subreddit_add) -ForegroundColor Green
         }
         else {
             Write-Host "Subreddit {0} could not be found. It could not exist or be restricted." -ForegroundColor Red
@@ -123,11 +119,18 @@ function WarplanepornLockscreen{
         else {
             $subreddit_remove = $remove.Trim()
             if ($configuration.subreddits.Contains($subreddit_remove)) {
-                $configuration.subreddits.Remove($subreddit_remove)
-                $configuration | ConvertTo-Json | Out-File $configPath
+                $subreddits_remove = @()
+                $configuration.subreddits | ForEach-Object {
+                    if ($_ -ne $subreddit_remove) {
+                        $subreddits_remove += $_
+                    }
+                }
+                $configuration.subreddits = $subreddits_remove
+                Set-Content $configPath ($configuration | ConvertTo-Json)
+                Write-Host ("Subreddit {0} was removed from configuration" -f $subreddit_remove) -ForegroundColor Green
             }
             else {
-                Write-Host "Could not find subreddit {0} in the current configuration" -ForegroundColor Red
+                Write-Host ("Could not find subreddit {0} in the current configuration" -f $subreddit_remove) -ForegroundColor Red
             }
         }
     }
@@ -171,13 +174,18 @@ function showHelp {
 
 function Config-WarplanepornLockscreen {
     param(
-        [switch]$ExecuteAfter
+        [switch]$ExecuteAfter,
+        [switch]$install
     )
 
     $ProgressPreference = 'SilentlyContinue'
     $configPath = Join-Path $PSScriptRoot "config.json"
 
     $configuration = @{}
+
+    if ($install) {
+        $configuration.installed = $true
+    }
 
     # ask nsfw
     $nsfw = (Read-Host "Do you want to include nsfw posts in the potential wallpapers ? (y/n) (default no)").ToLower()
@@ -360,7 +368,7 @@ function Install-WarplanepornLockscreen {
         }
 
         # run user config
-        Config-WarplanepornLockscreen -ExecuteAfter
+        Config-WarplanepornLockscreen -ExecuteAfter -install
 
         # check execution policy
         $LMExecutionPolicy = (Get-ExecutionPolicy -Scope LocalMachine)
@@ -372,6 +380,7 @@ function Install-WarplanepornLockscreen {
             Write-Host "To enable execution of scripts, run " -NoNewline
             Write-Host "Set-ExecutionPolicy Unrestricted" -BackgroundColor DarkYellow -ForegroundColor Black -NoNewline
             Write-Host " as admin"
+            Write-Host "See https://github.com/viccol961/warplaneporn-lockscreen#executionpolicy"
             Write-Host "See https://go.microsoft.com/fwlink/?LinkID=135170"
         }
     }
@@ -395,7 +404,7 @@ function Uninstall-WarplanepornLockscreen {
 
         # unregister task
         Unregister-ScheduledTask -TaskName "WarplanepornLockscreen" -ErrorAction SilentlyContinue -Confirm:$false | Out-Null;
-        if (Get-ScheduledTask -TaskName) {
+        if (Get-ScheduledTask -TaskName "WarplanepornLockscreen") {
             Write-Host "Failed to unregister task" -ForegroundColor Red
         }
         else {
@@ -406,9 +415,9 @@ function Uninstall-WarplanepornLockscreen {
         Remove-Item  $PSScriptRoot -Recurse -ErrorAction SilentlyContinue -Force | Out-Null;
         if (Test-Path $PSScriptRoot){
             Write-Host "Could not automatically remove PowerShell module" -ForegroundColor Red
-            Write-host "You have to manually remove the module now. Just delete the WarplanepornLockscreen folder." -ForegroundColor Cyan
+            Write-host "You may want to manually remove the module. Just delete the WarplanepornLockscreen folder." -ForegroundColor Cyan
             Start-Sleep 1
-            Invoke-Item $PSScriptRoot;
+            Invoke-Item (Split-Path -Parent $PSScriptRoot);
         }
         else {
             Write-Host "Uninstalled module" -ForegroundColor Green
@@ -456,7 +465,7 @@ function Write-Log  {
 
     if (($null -ne $logfile)){
         $date = Get-date -f "dd/MM/yyyy HH:mm:ss"
-        if (! (Test-Path $logfile)) {Set-Content $logfile "WarplanepornLockscreen log"}
+        if (!(Test-Path $logfile)) {Set-Content $logfile "WarplanepornLockscreen log"}
         if ((get-item $logfile).length -gt 64kb){
             $oldlog = (Get-Content $logfile)[-40..-1]
             Set-Content $logfile ("WarplanepornLockscreen log -- Trimmed {0}" -f $date)

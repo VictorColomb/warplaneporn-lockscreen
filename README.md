@@ -7,6 +7,8 @@
 
 Daily lock screen wallpaper from one or several subreddits.
 
+[This PowerShell module is hosted in the PowerShell Gallery.](https://www.powershellgallery.com/packages/WarplanepornLockscreen)
+
 ## Requirements
 
 * Powershell 5+
@@ -16,18 +18,17 @@ Works for Windows 10, build 1703 (Creators Update) or later.
 
 ## Install
 
-### Option 1 : from the PowerShell Gallery (recommended)
+### Option 1 : from the PowerShell Gallery
 
 In an administrator powershell session, run
 
 ```[powershell]
+Set-ExecutionPolicy Unrestricted -Scope Process
 Install-Module -Name WarplanepornLockscreen
 WarplanepornLockscreen -install
 ```
 
 This will download the module from PowerShell Gallery and install it on your machine.
-
-This method is better than any other one because it bypasses the PowerShell execution policy (see [below](#executionpolicy "Go to ExecutionPolicy"))
 
 ### Option 2 : auto-extractible archive
 
@@ -120,7 +121,8 @@ The installer and the daily task have the `-ExecutionPolicy Bypass` switch and t
 However, the module function `WarplanepornLockscreen` will not run and you will get a big red error message.
 
 If you want to manually refresh the lockscreen or change configuration without having to reinstall, change the execution policy to `Unrestricted` or `Bypass`, using the `Set-ExecutionPolicy` PowerShell command.  
-Be aware that with these settings, you will be able to run any PowerShell scripts on your computer, potentially dangerous and/or malicious ones. Be very careful !
+Be aware that with these settings, you will be able to run any PowerShell scripts on your computer, potentially dangerous and/or malicious ones. Be very careful !  
+It's best to only change the execution policy for the session only : open an administrator powershell session and enter the command `Set-ExecutionPolicy Unrestricted -Scope Process`. At this point you can use the `WarplanepornLockscreen` command.
 
 The installer will check your current execution policy and warn you should it be too restricted for the utility to be ran manually.
 
