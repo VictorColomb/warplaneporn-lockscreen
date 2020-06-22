@@ -464,7 +464,7 @@ function Write-Log  {
     $logfile = Join-Path $PSScriptRoot "log.txt"
 
     if (($null -ne $logfile)){
-        $date = Get-date -f "dd/MM/yyyy HH:mm:ss"
+        $date = Get-date -Format "dd/MM/yyyy HH:mm:ss"
         if (!(Test-Path $logfile)) {Set-Content $logfile "WarplanepornLockscreen log"}
         if ((get-item $logfile).length -gt 64kb){
             $oldlog = (Get-Content $logfile)[-40..-1]
