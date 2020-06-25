@@ -21,7 +21,6 @@ if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]:
         # execute install
         WarplanepornLockscreen -install
 
-        Write-Host "`nYou can now delete the installation files" -ForegroundColor Cyan
         cmd /c pause
     }
     else {

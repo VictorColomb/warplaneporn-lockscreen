@@ -143,10 +143,10 @@ function WarplanepornLockscreen{
         showHelp
     }
 
-    if (!$install -and !$uninstall -and !$list -and !$add -and !$remove -and !$showlog -and !$showpic -and !$help) {
+    if (!$install -and !$uninstall -and !$list -and !$config -and !$add -and !$remove -and !$showlog -and !$showpic -and !$help) {
         if(!$subreddits) {
-            if ($config.subreddits) {
-                $subreddits = $config.subreddits
+            if ($configuration.subreddits) {
+                $subreddits = $configuration.subreddits
             }
             else {
                 $subreddits = @('warplaneporn')
@@ -186,6 +186,15 @@ function Config-WarplanepornLockscreen {
     if ($install) {
         $configuration.installed = $true
     }
+    else {
+        if (Test-Path $configPath) {
+            $config = Get-Content -Raw -Path $configPath | ConvertFrom-Json
+            if ($config.installed) {
+                $configuration.installed = $config.installed
+            }
+        }
+    }
+
 
     # ask nsfw
     $nsfw = (Read-Host "Do you want to include nsfw posts in the potential wallpapers ? (y/n) (default no)").ToLower()
@@ -240,6 +249,9 @@ function Config-WarplanepornLockscreen {
         Write-Host ""
         WarplanepornLockscreen
     }
+    else {
+        Write-Host "Configuration saved" -ForegroundColor Green
+    }
 }
 
 function Get-WarplanepornPicfortheday {
@@ -249,7 +261,7 @@ function Get-WarplanepornPicfortheday {
     [string]$sort,
     [bool]$nsfw
     )
-    Write-Host ("List of configured subreddits : {0}" -f $subreddits)
+    Write-Host ("List of configured subreddits : {0}" -f [string]$subreddits)
 
     $ProgressPreference = 'SilentlyContinue'
     $templockscreenImagePath = Join-Path $PSScriptRoot "lockscreen_temp.jpg"
@@ -340,9 +352,13 @@ function Install-WarplanepornLockscreen {
     # check to see if user is admin
     if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")){
 
+        # get PS version (Core/Desktop)
+        if ($PSVersionTable.PSEdition -eq "Core") { $PSExecutable = "pwsh.exe" }
+        else { $PSExecutable = "powershell.exe" }
+
         # Create a task scheduler event
         $argument = "-WindowStyle Hidden -ExecutionPolicy Bypass -command `"WarplanepornLockscreen`""
-        $action = New-ScheduledTaskAction -id "WarplanepornLockscreen" -execute 'Powershell.exe' -Argument $argument
+        $action = New-ScheduledTaskAction -id "WarplanepornLockscreen" -execute $PSExecutable -Argument $argument
         $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAvailable -AllowStartIfOnBatteries
         $trigger = New-ScheduledTaskTrigger -Daily -At 1am
         Write-Host "`nThe task that is about to be created needs an administrator password to work" -ForegroundColor Cyan

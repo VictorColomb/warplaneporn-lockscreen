@@ -1,8 +1,8 @@
 # warplaneporn-lockscreen
 
-[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/viccol961/warplaneporn-lockscreen?sort=semver&style=flat-square)](https://github.com/viccol961/warplaneporn-lockscreen/releases)
-[![GitHub issues](https://img.shields.io/github/issues/viccol961/warplaneporn-lockscreen?style=flat-square)](https://github.com/viccol961/warplaneporn-lockscreen/issues)
-[![GitHub license](https://img.shields.io/github/license/viccol961/warplaneporn-lockscreen?style=flat-square)](https://github.com/viccol961/warplaneporn-lockscreen/blob/master/LICENSE)
+[![Releases](https://img.shields.io/github/v/release/viccol961/warplaneporn-lockscreen?sort=semver&style=flat-square)](https://github.com/viccol961/warplaneporn-lockscreen/releases)
+[![Issues](https://img.shields.io/github/issues/viccol961/warplaneporn-lockscreen?style=flat-square)](https://github.com/viccol961/warplaneporn-lockscreen/issues)
+[![License](https://img.shields.io/github/license/viccol961/warplaneporn-lockscreen?style=flat-square)](https://github.com/viccol961/warplaneporn-lockscreen/blob/master/LICENSE)
 [![r/warplaneporn](https://img.shields.io/static/v1?label=r/&message=warplaneporn&color=informational&style=flat-square)](https://reddit.com/r/warplaneporn)
 
 Daily lock screen wallpaper from one or several subreddits.
@@ -18,7 +18,7 @@ Works for Windows 10, build 1703 (Creators Update) or later.
 
 ## Install
 
-### Option 1 : from the PowerShell Gallery
+### Option 1 : from the PowerShell Gallery (personal favorite)
 
 In an administrator powershell session, run
 
@@ -55,7 +55,7 @@ Change this configuration at any time using the `-config` switch (see [below](#c
 
 The following registry key is set by the utility to set the lock screen wallpaper :
 
-```
+```[registry]
 [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP]
 "LockScreenImageStatus"=dword:00000001
 "LockScreenImagePath"="%PathToPSModule%\\lockscreen.jpg"
