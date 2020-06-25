@@ -359,7 +359,7 @@ function Install-WarplanepornLockscreen {
         # Create a task scheduler event
         $argument = "-WindowStyle Hidden -ExecutionPolicy Bypass -command `"WarplanepornLockscreen`""
         $action = New-ScheduledTaskAction -id "WarplanepornLockscreen" -execute $PSExecutable -Argument $argument
-        $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAvailable -AllowStartIfOnBatteries
+        $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -DontStopOnIdleEnd
         $trigger = New-ScheduledTaskTrigger -Daily -At 1am
         Write-Host "`nThe task that is about to be created needs an administrator password to work" -ForegroundColor Cyan
         $Credentials = Test-Credential
