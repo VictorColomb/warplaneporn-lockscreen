@@ -130,6 +130,7 @@ See <https://go.microsoft.com/fwlink/?LinkID=135170> for more information.
 
 ## To do
 
+* Check for updates
 * Option to save current wallpaper and option to see saved images
 * Adapt for desktop background (same thing, different registry key)
 * Support for Windows 7 ([this](https://www.reddit.com/r/PowerShell/comments/56r68w/script_to_change_windows_7_lock_screen/d8m51bk?utm_source=share&utm_medium=web2x) or [this](https://www.robdiesel.com/wordpress/2018/10/a-powershell-script-to-update-the-windows-7-and-windows-10-lock-screen-image/) should do it)

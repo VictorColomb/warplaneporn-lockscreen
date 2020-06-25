@@ -420,7 +420,8 @@ function Uninstall-WarplanepornLockscreen {
 
         # unregister task
         Unregister-ScheduledTask -TaskName "WarplanepornLockscreen" -ErrorAction SilentlyContinue -Confirm:$false | Out-Null;
-        if (Get-ScheduledTask -TaskName "WarplanepornLockscreen") {
+        Get-ScheduledTask -TaskName "WarplanepornLockscreen" -ErrorAction SilentlyContinue -OutVariable task
+        if ($task) {
             Write-Host "Failed to unregister task" -ForegroundColor Red
         }
         else {
