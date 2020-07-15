@@ -10,7 +10,9 @@ function WarplanepornLockscreen{
     [string]$add,
     [string]$remove,
     [string]$sort,
-    [switch]$config
+    [switch]$config,
+    [switch]$save,
+    [switch]$showSaved
     )
 
     $warplanepornPic = Join-Path $PSScriptRoot "lockscreen.jpg"
@@ -98,6 +100,32 @@ function WarplanepornLockscreen{
         Write-Host $configuration.subreddits
     }
 
+    if ($save) {
+        $savedDir = Join-Path $PSScriptRoot "Saved"
+        $imgPath = Join-Path $PSScriptRoot "lockscreen.jpg"
+        if (!(Test-Path $savedDir)) {
+            New-Item -Path $PSScriptRoot -Name "Saved" -ItemType "directory" | Out-Null
+        }
+        if (Test-Path $imgPath) {
+            Copy-Item -Path $imgPath -Destination $savedDir -Force | Out-Null
+            Rename-Item -Path (Join-Path $savedDir "lockscreen.jpg") -NewName ((Get-date -Format "dd_MM_yyyy HH_mm_ss") + ".jpg") | Out-Null
+            Write-Host "Successfully saved current wallpaper" -ForegroundColor Green
+        }
+        else {
+            Write-Host "No wallpaper was found to be saved" -ForegroundColor Yellow
+        }
+    }
+
+    if ($showSaved) {
+        $savedDir = Join-Path $PSScriptRoot "Saved"
+        if (Test-Path $savedDir) {
+            Invoke-Item $savedDir
+        }
+        else {
+            Write-Host "No wallpaper was ever saved" -ForegroundColor Yellow
+        }
+    }
+
     if ($add -and (!$config)) {
         $subreddit_add = $add.Trim()
         $ProgressPreference = 'SilentlyContinue'
@@ -143,7 +171,7 @@ function WarplanepornLockscreen{
         showHelp
     }
 
-    if (!$install -and !$uninstall -and !$list -and !$config -and !$add -and !$remove -and !$showlog -and !$showpic -and !$help) {
+    if (!$install -and !$uninstall -and !$list -and !$config -and !$add -and !$remove -and !$showlog -and !$showpic -and !$help -and !$save -and !$showSaved) {
         if(!$subreddits) {
             if ($configuration.subreddits) {
                 $subreddits = $configuration.subreddits
@@ -168,6 +196,8 @@ function showHelp {
     Write-Host "WarplanepornLockscreen [-list]"
     Write-Host "WarplanepornLockscreen [-add subreddit]"
     Write-Host "WarplanepornLockscreen [-remove subreddit]"
+    Write-Host "WarplanepornLockscreen [-saveCurrent]"
+    Write-Host "WarplanepornLockscreen [-showSaved]"
     Write-Host "WarplanepornLockscreen [-showPic]"
     Write-Host "WarplanepornLockscreen [-showlog]"
 }
@@ -493,3 +523,6 @@ function Write-Log  {
 
     Write-Host $Msg -ForegroundColor $colour
 }
+
+New-Alias -Name WPP-LS -Value WarplanepornLockscreen
+Export-ModuleMember -Alias "WPP-LS"

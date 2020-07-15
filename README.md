@@ -68,7 +68,10 @@ The utility can be run at any time to manually refresh the lock screen wallpaper
 
 ```[batch]
 WarplanepornLockscreen [-subreddits sub1[,sub2[...]]] [-nsfw] [-sort top|hot|new]
+WPP-LS [-subreddits sub1[,sub2[...]]] [-nsfw] [-sort top|hot|new]
 ```
+
+For your convenience, `WarplanepornLockscreen` has an alias : `WPP-LS` (way shorter !)
 
 ### Change configuration
 
@@ -94,6 +97,13 @@ WarplanepornLockscreen -list
 ```[batch]
 WarplanepornLockscreen -showpic
 WarplanepornLockscreen -showlog
+```
+
+### Save current wallpaper and see saved wallpapers
+
+```[batch]
+WarplanepornLockscreen -save
+WarplanepornLockscreen -showSaved
 ```
 
 ## Uninstall
