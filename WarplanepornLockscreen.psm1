@@ -1,18 +1,18 @@
-function WarplanepornLockscreen{
+function WarplanepornLockscreen {
     param (
-    [string[]]$subreddits,
-    [switch]$nsfw,
-    [switch]$install,
-    [switch]$uninstall,
-    [switch]$showpic,
-    [switch]$showlog,
-    [switch]$list,
-    [string]$add,
-    [string]$remove,
-    [string]$sort,
-    [switch]$config,
-    [switch]$save,
-    [switch]$showSaved
+        [string[]]$subreddits,
+        [switch]$nsfw,
+        [switch]$install,
+        [switch]$uninstall,
+        [switch]$showpic,
+        [switch]$showlog,
+        [switch]$list,
+        [string]$add,
+        [string]$remove,
+        [string]$sort,
+        [switch]$config,
+        [switch]$save,
+        [switch]$showSaved
     )
 
     $warplanepornPic = Join-Path $PSScriptRoot "lockscreen.jpg"
@@ -31,7 +31,7 @@ function WarplanepornLockscreen{
     }
 
     # install and uninstall options
-    if ($install){
+    if ($install) {
         Install-WarplanepornLockscreen
         Break
     }
@@ -164,15 +164,15 @@ function WarplanepornLockscreen{
     }
 
     if ($config) {
-        Config-WarplanepornLockscreen
+        Set-Config
     }
 
     if ($help) {
-        showHelp
+        Show-Help
     }
 
     if (!$install -and !$uninstall -and !$list -and !$config -and !$add -and !$remove -and !$showlog -and !$showpic -and !$help -and !$save -and !$showSaved) {
-        if(!$subreddits) {
+        if (!$subreddits) {
             if ($configuration.subreddits) {
                 $subreddits = $configuration.subreddits
             }
@@ -181,11 +181,11 @@ function WarplanepornLockscreen{
             }
         }
 
-        Get-WarplanepornPicfortheday -subreddits $subreddits -nsfw $nsfw -sort $sort;
+        Get-PicForTheDay -subreddits $subreddits -nsfw $nsfw -sort $sort;
     }
 }
 
-function showHelp {
+function Show-Help {
     Write-Host "Usage: WarplanepornLockscreen [-subreddits sub1,sub2...] [-nsfw] [-sort top|hot|new]"
     Write-Host "Refresh lock screen wallpaper from the subreddits specified or from those in the config"
     Write-Host ""
@@ -202,7 +202,7 @@ function showHelp {
     Write-Host "WarplanepornLockscreen [-showlog]"
 }
 
-function Config-WarplanepornLockscreen {
+function Set-Config {
     param(
         [switch]$ExecuteAfter,
         [switch]$install
@@ -284,12 +284,12 @@ function Config-WarplanepornLockscreen {
     }
 }
 
-function Get-WarplanepornPicfortheday {
+function Get-PicForTheDay {
     # get image from given subreddit and check dimensions
     param (
-    [string[]]$subreddits,
-    [string]$sort,
-    [bool]$nsfw
+        [string[]]$subreddits,
+        [string]$sort,
+        [bool]$nsfw
     )
     Write-Host ("List of configured subreddits : {0}" -f [string]$subreddits)
 
@@ -297,14 +297,14 @@ function Get-WarplanepornPicfortheday {
     $templockscreenImagePath = Join-Path $PSScriptRoot "lockscreen_temp.jpg"
     $lockscreenImagePath = Join-Path $PSScriptRoot "lockscreen.jpg"
 
-    $ShuffledSubreddits = $subreddits | Sort-Object {Get-Random}
+    $ShuffledSubreddits = $subreddits | Sort-Object { Get-Random }
     $notfound = 1
     $subIdx = 0
     while (($subIdx -lt $ShuffledSubreddits.count) -and $notfound) {
         $Subreddit = @($ShuffledSubreddits)[$subIdx]
-        Write-Log ("Will choose image from subreddit {0}, sorting by {1}" -f $Subreddit,$sort);
+        Write-Log ("Will choose image from subreddit {0}, sorting by {1}" -f $Subreddit, $sort);
 
-        $request = 'https://reddit.com/r/{0}/{1}.json?limit=10' -f $Subreddit,$sort
+        $request = 'https://reddit.com/r/{0}/{1}.json?limit=10' -f $Subreddit, $sort
         $jsonRequest = Invoke-WebRequest $request | ConvertFrom-Json
         $posts = $jsonRequest.data.children
 
@@ -318,19 +318,17 @@ function Get-WarplanepornPicfortheday {
                 $imagewidth = $Image.width
                 $imageheight = $Image.height
                 $Image.Dispose();
-                if (($imagewidth -ge 1000) -and (($imagewidth/$imageheight) -ge 1)) {
+                if (($imagewidth -ge 1000) -and (($imagewidth / $imageheight) -ge 1)) {
                     $notfound = 0
-                    $imageurl = $_.data.url
-                    if (Test-Path $lockscreenImagePath) {Remove-Item $lockscreenImagePath -Force}
+                    if (Test-Path $lockscreenImagePath) { Remove-Item $lockscreenImagePath -Force }
                     Rename-Item $templockscreenImagePath "lockscreen.jpg"
                 }
                 elseif ($imagewidth -le 1000) {
                     Write-Log ("Image is too small (width : {0})" -f $imagewidth);
                 }
                 else {
-                    Write-Log ("Image is too disproportionate (width/height ratio : {0})" -f ($imagewidth/$imageheight));
+                    Write-Log ("Image is too disproportionate (width/height ratio : {0})" -f ($imagewidth / $imageheight));
                 }
-                $i += 1
             }
         }
 
@@ -348,7 +346,7 @@ function Get-WarplanepornPicfortheday {
 
 function Set-LockscreenWallpaper {
     param(
-    [string]$LockScreenImageValue
+        [string]$LockScreenImageValue
     )
 
     $RegKeyPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP"
@@ -358,8 +356,7 @@ function Set-LockscreenWallpaper {
     $StatusValue = "1"
 
     if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-        if (!(Test-Path $RegKeyPath))
-        {
+        if (!(Test-Path $RegKeyPath)) {
             New-Item -Path $RegKeyPath -Force | Out-Null
 
             New-ItemProperty -Path $RegKeyPath -Name $LockScreenStatus -Value $StatusValue -PropertyType DWORD -Force | Out-Null
@@ -380,7 +377,7 @@ function Set-LockscreenWallpaper {
 
 function Install-WarplanepornLockscreen {
     # check to see if user is admin
-    if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")){
+    if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
 
         # get PS version (Core/Desktop)
         if ($PSVersionTable.PSEdition -eq "Core") { $PSExecutable = "pwsh.exe" }
@@ -399,22 +396,22 @@ function Install-WarplanepornLockscreen {
             Unregister-ScheduledTask -TaskName "WarplanepornLockscreen" -ErrorAction SilentlyContinue -Confirm:$false
             Write-Host "Registering new task" -ForegroundColor DarkYellow
             Register-ScheduledTask `
-            -TaskName "WarplanepornLockscreen" `
-            -User $Credentials[0] `
-            -Action $action `
-            -Settings $settings `
-            -Trigger $trigger -RunLevel Highest `
-            -Password $Credentials[1] `
-            -taskPath "\WarplanepornLockscreen\" | Out-Null
+                -TaskName "WarplanepornLockscreen" `
+                -User $Credentials[0] `
+                -Action $action `
+                -Settings $settings `
+                -Trigger $trigger -RunLevel Highest `
+                -Password $Credentials[1] `
+                -taskPath "\WarplanepornLockscreen\" | Out-Null
         }
 
-        if ($? -and (Get-ScheduledTask -TaskName "WarplanepornLockscreen" -ErrorAction SilentlyContinue)){
+        if ($? -and (Get-ScheduledTask -TaskName "WarplanepornLockscreen" -ErrorAction SilentlyContinue)) {
             Write-Log "WarplanepornLockscreen is installed" -colour "Green"
             Write-Host ""
         }
 
         # run user config
-        Config-WarplanepornLockscreen -ExecuteAfter -install
+        Set-Config -ExecuteAfter -install
 
         # check execution policy
         $LMExecutionPolicy = (Get-ExecutionPolicy -Scope LocalMachine)
@@ -437,7 +434,7 @@ function Install-WarplanepornLockscreen {
 }
 
 function Uninstall-WarplanepornLockscreen {
-    if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")){
+    if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
         # remove registry key
         $RegKeyPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP"
         Remove-Item -Path $RegKeyPath -Force -Recurse | Out-Null;
@@ -460,7 +457,7 @@ function Uninstall-WarplanepornLockscreen {
 
         # remove ps module
         Remove-Item  $PSScriptRoot -Recurse -ErrorAction SilentlyContinue -Force | Out-Null;
-        if (Test-Path $PSScriptRoot){
+        if (Test-Path $PSScriptRoot) {
             Write-Host "Could not automatically remove PowerShell module" -ForegroundColor Red
             Write-host "You may want to manually remove the module. Just delete the WarplanepornLockscreen folder." -ForegroundColor Cyan
             Start-Sleep 1
@@ -469,7 +466,8 @@ function Uninstall-WarplanepornLockscreen {
         else {
             Write-Host "Uninstalled module" -ForegroundColor Green
         }
-    } else {
+    }
+    else {
         Write-host "You need to run this script as admin to uninstall" -ForegroundColor Red
     }
 
@@ -479,9 +477,9 @@ function Test-Credential {
     $retryPassword = $true;
     $usernameCorrect = $false;
     Add-Type -AssemblyName System.DirectoryServices.AccountManagement
-    $DS = New-Object System.DirectoryServices.AccountManagement.PrincipalContext('machine',$env:COMPUTERNAME)
+    $DS = New-Object System.DirectoryServices.AccountManagement.PrincipalContext('machine', $env:COMPUTERNAME)
 
-    while ((!$usernameCorrect) -and $retryPassword){
+    while ((!$usernameCorrect) -and $retryPassword) {
         $username = Read-Host "Enter administrator username "
         $securePassword = Read-Host "Enter password for that user " -AsSecureString
         $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
@@ -493,7 +491,7 @@ function Test-Credential {
             Write-Warning "Username and/or password incorrect";
             $retryPassword = ((Read-Host "Try again (y/n) ?").ToLower() -eq "y")
         }
-        if (!$retryPassword){
+        if (!$retryPassword) {
             Write-Host "WARNING: The task creation will fail without administator password." -ForegroundColor Red
             Write-Host "You will still be able to run the utility to manually refresh the lock screen wallpaper`n" -ForegroundColor Red
             return $false
@@ -502,18 +500,18 @@ function Test-Credential {
     }
 }
 
-function Write-Log  {
+function Write-Log {
     param (
-    [string]$Msg,
-    [string]$colour = "White"
+        [string]$Msg,
+        [string]$colour = "White"
     )
 
     $logfile = Join-Path $PSScriptRoot "log.txt"
 
-    if (($null -ne $logfile)){
+    if (($null -ne $logfile)) {
         $date = Get-date -Format "dd/MM/yyyy HH:mm:ss"
-        if (!(Test-Path $logfile)) {Set-Content $logfile "WarplanepornLockscreen log"}
-        if ((get-item $logfile).length -gt 64kb){
+        if (!(Test-Path $logfile)) { Set-Content $logfile "WarplanepornLockscreen log" }
+        if ((get-item $logfile).length -gt 64kb) {
             $oldlog = (Get-Content $logfile)[-40..-1]
             Set-Content $logfile ("WarplanepornLockscreen log -- Trimmed {0}" -f $date)
             Add-Content $logfile $oldlog
