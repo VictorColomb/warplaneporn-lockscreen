@@ -12,4 +12,4 @@ jobs:
         uses: pcgeek86/publish-powershell-module-action@v20
         with:
           NuGetApiKey: ${{ secrets.PS_GALLERY_KEY }}
-          modulePath: './'
+          modulePath: './WarplanepornLockscreen'
