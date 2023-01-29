@@ -1,3 +1,5 @@
+$configPath = Join-Path $PSScriptRoot "config.json"
+
 function WarplanepornLockscreen {
     param (
         [string[]]$subreddits,
@@ -12,20 +14,31 @@ function WarplanepornLockscreen {
         [string]$sort,
         [switch]$config,
         [switch]$save,
-        [switch]$showSaved
+        [switch]$showSaved,
+        [switch]$noUpdateCheck
     )
 
     $warplanepornPic = Join-Path $PSScriptRoot "lockscreen.jpg"
-    $configPath = Join-Path $PSScriptRoot "config.json"
+
+    # get config and check for update
+    $configuration = Get-Config
+    if (-not $noUpdateCheck) {
+        if (
+            (-not $configuration.nextUpdateCheck) -or
+            ($configuration.nextUpdateCheck -lt [int64](Get-Date(Get-Date).ToUniversalTime() -UFormat %s))
+        ) {
+            Test-ForUpdate
+        }
+    }
 
     # catch weird argument combinaisons
     if ($install -and $uninstall) {
-        Write-Host "Why would you want to install and uninstall ??"
+        Write-Host "Why would you want to install and uninstall??"
         Write-Host "See help : WarplanepornLockscreen -help"
         Break
     }
     if ($install -and ($list -or $add -or $remove -or $config)) {
-        Write-Host "Don't ask for both installation and configuration. The former does the latter !"
+        Write-Host "Don't ask for both installation and configuration. The former does the latter!"
         Write-Host "See help : WarplanepornLockscreen -help"
         Break
     }
@@ -41,16 +54,8 @@ function WarplanepornLockscreen {
         Break
     }
 
-    # get config and check installed
-    if (-not (Test-Path $configPath)) {
-        Write-Host "The module was never installed, would you like to install it ? (y/n) : " -ForegroundColor Cyan -NoNewline
-        if ((Read-Host).ToLower() -eq "y") {
-            Install-WarplanepornLockscreen
-            Break
-        }
-    }
-    $configuration = Get-Content -Raw -Path $configPath | ConvertFrom-Json
-    if (!$configuration.installed) {
+    # check installed
+    if ((-not (Test-Path $configPath)) -or (!$configuration.installed)) {
         Write-Host "The module was never installed, would you like to install it ? (y/n) : " -ForegroundColor Cyan -NoNewline
         if ((Read-Host).ToLower() -eq "y") {
             Install-WarplanepornLockscreen
@@ -62,7 +67,7 @@ function WarplanepornLockscreen {
     if (!$nsfw) { $nsfw = $configuration.nsfw }
     $sort = $sort.ToLower()
     if (-not (($sort -eq "hot") -or ($sort -eq "top") -or ($sort -eq "new") -or ($sort -eq $null) -or ($sort -eq ""))) {
-        Write-Host ("Sort input {0} makes no sense. It should be one of top, hot and new" -f $sort) -ForegroundColor Red
+        Write-Host ("Sort input {0} unknown. It should be one of top, hot and new" -f $sort) -ForegroundColor Red
         Write-Host "See help : WarplanepornLockscreen -help"
         cmd /c pause
         Break
@@ -72,7 +77,6 @@ function WarplanepornLockscreen {
             $sort = $configuration.sort
         }
         else {
-            $configuration.sort = "hot"
             $sort = "hot"
         }
     }
@@ -102,12 +106,11 @@ function WarplanepornLockscreen {
 
     if ($save) {
         $savedDir = Join-Path $PSScriptRoot "Saved"
-        $imgPath = Join-Path $PSScriptRoot "lockscreen.jpg"
         if (!(Test-Path $savedDir)) {
             New-Item -Path $PSScriptRoot -Name "Saved" -ItemType "directory" | Out-Null
         }
-        if (Test-Path $imgPath) {
-            Copy-Item -Path $imgPath -Destination $savedDir -Force | Out-Null
+        if (Test-Path $warplanepornPic) {
+            Copy-Item -Path $warplanepornPic -Destination $savedDir -Force | Out-Null
             Rename-Item -Path (Join-Path $savedDir "lockscreen.jpg") -NewName ((Get-date -Format "dd_MM_yyyy HH_mm_ss") + ".jpg") | Out-Null
             Write-Host "Successfully saved current wallpaper" -ForegroundColor Green
         }
@@ -181,7 +184,7 @@ function WarplanepornLockscreen {
             }
         }
 
-        Get-PicForTheDay -subreddits $subreddits -nsfw $nsfw -sort $sort;
+        Get-Picture -subreddits $subreddits -nsfw $nsfw -sort $sort
     }
 }
 
@@ -202,6 +205,18 @@ function Show-Help {
     Write-Host "WarplanepornLockscreen [-showlog]"
 }
 
+function Get-Config {
+    $configuration = @{}
+
+    if (Test-Path $configPath) {
+        (Get-Content -Raw -Path $configPath | ConvertFrom-Json).psobject.Properties | ForEach-Object {
+            $configuration[$_.Name] = $_.Value
+        }
+    }
+
+    return $configuration
+}
+
 function Set-Config {
     param(
         [switch]$ExecuteAfter,
@@ -209,20 +224,11 @@ function Set-Config {
     )
 
     $ProgressPreference = 'SilentlyContinue'
-    $configPath = Join-Path $PSScriptRoot "config.json"
 
-    $configuration = @{}
+    $configuration = Get-Config
 
     if ($install) {
         $configuration.installed = $true
-    }
-    else {
-        if (Test-Path $configPath) {
-            $config = Get-Content -Raw -Path $configPath | ConvertFrom-Json
-            if ($config.installed) {
-                $configuration.installed = $config.installed
-            }
-        }
     }
 
 
@@ -284,7 +290,40 @@ function Set-Config {
     }
 }
 
-function Get-PicForTheDay {
+function Test-ForUpdate {
+    $configuration = Get-Config
+    $configuration.nextUpdateCheck = [int64](Get-Date(Get-Date).ToUniversalTime() -UFormat %s) + 86400
+
+    if (Test-Path $configPath) {
+        Remove-Item $configPath | Out-Null
+    }
+    $configuration | ConvertTo-Json | Out-File $configPath
+
+    $localVersion = (Get-Module -Name WarplanepornLockscreen).Version
+    $remoteVersion = (Find-Module -Name WarplanepornLockscreen -Repository PSGallery).Version
+
+    if ($remoteVersion -gt $localVersion) {
+        Write-Host "New version available. Would you like to update (y/n)? " -ForegroundColor Yellow -NoNewline
+        if ((Read-Host).ToLower() -eq 'y') {
+            Update-Module -Name WarplanepornLockscreen
+
+            $newVersionDirectory = Join-Path (Split-Path -Parent $PSScriptRoot) $remoteVersion
+            if (Test-Path $newVersionDirectory) {
+                Copy-Item -Force -Path (Join-Path $PSScriptRoot "config.json") -Destination $newVersionDirectory | Out-Null
+                Write-Host "Successfully updated WarplanepornLockscreen to version $remoteVersion." -ForegroundColor Green
+            }
+            else {
+                Write-Host "Successfully updated WarplanepornLockscreen to version $remoteVersion " -NoNewline
+                Write-Host "but could not copy current configuration to the new version..." -ForegroundColor Yellow
+            }
+
+            Write-Host "Please relaunch WarplanepornLockscreen to continue."
+            Exit
+        }
+    }
+}
+
+function Get-Picture {
     # get image from given subreddit and check dimensions
     param (
         [string[]]$subreddits,
@@ -384,7 +423,7 @@ function Install-WarplanepornLockscreen {
         else { $PSExecutable = "powershell.exe" }
 
         # Create a task scheduler event
-        $argument = "-WindowStyle Hidden -ExecutionPolicy Bypass -command `"WarplanepornLockscreen`""
+        $argument = "-WindowStyle Hidden -ExecutionPolicy Bypass -command `"WarplanepornLockscreen -noUpdateCheck`""
         $action = New-ScheduledTaskAction -id "WarplanepornLockscreen" -execute $PSExecutable -Argument $argument
         $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -DontStopOnIdleEnd
         $trigger = New-ScheduledTaskTrigger -Daily -At 1am
@@ -522,5 +561,5 @@ function Write-Log {
     Write-Host $Msg -ForegroundColor $colour
 }
 
-New-Alias -Name WPP-LS -Value WarplanepornLockscreen
+Set-Alias -Name WPP-LS -Value WarplanepornLockscreen
 Export-ModuleMember -Alias "WPP-LS"
